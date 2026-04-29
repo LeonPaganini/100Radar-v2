@@ -1,4 +1,6 @@
-const BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "";
+const BASE_URL =
+  (import.meta.env.VITE_API_BASE_URL as string | undefined) ??
+  (import.meta.env.DEV ? "http://localhost:8000" : "");
 
 if (!BASE_URL) {
   throw new Error("[100Radar] VITE_API_BASE_URL é obrigatório.");
