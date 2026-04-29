@@ -23,5 +23,5 @@ export const RequireAdminAuth = () => {
 
   return <Outlet />;
 };
--e 
+
 export default RequireAdminAuth;

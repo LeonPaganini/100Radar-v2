@@ -76,7 +76,7 @@ export default function Resultado() {
               ["Equipamento localizado", q.site_id ? "Sim" : "Não"],
             ].map(([k, v]) => (
               <div key={String(k)} className="flex justify-between gap-4">
-                <dt className="font-medium text-muted-foreground">{k}</dt>
+                <dt className="font-medium text-muted-foreground">{String(k)}</dt>
                 <dd className="text-right">{String(v ?? "—")}</dd>
               </div>
             ))}

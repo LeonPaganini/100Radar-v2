@@ -90,5 +90,5 @@ export const AdminShell = () => {
     </SidebarProvider>
   );
 };
--e 
+
 export default AdminShell;

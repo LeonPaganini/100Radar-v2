@@ -39,7 +39,16 @@ const AdminDashboard = () => {
       ) : null}
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {(data?.metrics.length ? data.metrics : Array.from({ length: 8 })).map((metric, index) => (
+        {(data?.metrics.length
+          ? data.metrics
+          : Array.from({ length: 8 }, (_, index) => ({
+              label: "Carregando mÃ©trica",
+              value: undefined,
+              tone: "default",
+              helper: "Aguardando dados operacionais.",
+              key: index,
+            }))
+        ).map((metric, index) => (
           <Card key={metric?.label ?? index}>
             <CardHeader className="pb-3">
               <CardDescription>{metric?.label ?? "Carregando métrica"}</CardDescription>

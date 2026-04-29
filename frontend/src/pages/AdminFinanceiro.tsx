@@ -237,7 +237,12 @@ const AdminFinanceiro = () => {
     );
   }
 
-  const summaryCards = summaryQuery.data?.cards ?? [];
+  const summaryCards = (summaryQuery.data?.cards ?? []) as {
+    key?: string | number;
+    label?: ReactNode;
+    formattedValue?: ReactNode;
+    helper?: ReactNode;
+  }[];
   const topUfRows = (paymentsQuery.data?.topUfsByRevenue ?? byUfQuery.data?.items ?? []) as FinanceByUfRow[];
   const businessRules = summaryQuery.data?.businessRules ?? {};
 
@@ -270,7 +275,7 @@ const AdminFinanceiro = () => {
                 {Object.entries(businessRules).map(([key, value]) => (
                   <div key={key} className="rounded-xl border p-3">
                     <div className="font-medium capitalize">{key.replaceAll("_", " ")}</div>
-                    <div className="mt-1 text-muted-foreground">{value}</div>
+                    <div className="mt-1 text-muted-foreground">{String(value)}</div>
                   </div>
                 ))}
               </div>
@@ -394,7 +399,15 @@ const AdminFinanceiro = () => {
       </Card>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-        {(summaryCards.length ? summaryCards : Array.from({ length: 10 })).map((card, index) => (
+        {(summaryCards.length
+          ? summaryCards
+          : Array.from({ length: 10 }, (_, index) => ({
+              key: index,
+              label: "Carregando",
+              formattedValue: undefined,
+              helper: "Calculando indicadores financeiros.",
+            }))
+        ).map((card, index) => (
           <Card key={card?.key ?? index} className={cn("transition-opacity", isFetching && "opacity-80")}>
             <CardHeader className="pb-3">
               <CardDescription>{card?.label ?? "Carregando"}</CardDescription>
@@ -474,7 +487,7 @@ const AdminFinanceiro = () => {
                   <PieChart>
                     <ChartTooltip content={<ChartTooltipContent nameKey="label" />} />
                     <Pie data={chartsQuery.data?.pagamentosPorProvider ?? []} dataKey="value" nameKey="label" innerRadius={70} outerRadius={110}>
-                      {(chartsQuery.data?.pagamentosPorProvider ?? []).map((entry, index) => (
+                      {((chartsQuery.data?.pagamentosPorProvider ?? []) as { label: string }[]).map((entry, index) => (
                         <Cell key={entry.label} fill={PIE_COLORS[index % PIE_COLORS.length]} />
                       ))}
                     </Pie>
@@ -629,7 +642,7 @@ const AdminFinanceiro = () => {
               description="Consultas que tiveram pagamento aprovado dentro do período."
               columns={["Criada em", "Query ID", "UF", "Identificador", "Valor", "Provider", "Status", "Pago em"]}
             >
-              {(paymentsQuery.data?.monetizedQueries ?? []).length ? paymentsQuery.data!.monetizedQueries.map((item) => (
+              {((paymentsQuery.data?.monetizedQueries ?? []) as FinancePaymentRow[]).length ? ((paymentsQuery.data?.monetizedQueries ?? []) as FinancePaymentRow[]).map((item) => (
                 <TableRow key={`${item.queryId}-${item.paidAt}`}>
                   <TableCell>{formatDateTime(item.createdAt)}</TableCell>
                   <TableCell className="font-mono text-xs">{item.queryId.slice(0, 8)}…</TableCell>
