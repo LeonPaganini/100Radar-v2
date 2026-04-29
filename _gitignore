@@ -1,0 +1,69 @@
+# ============================================================
+# 100Radar — .gitignore
+# ============================================================
+
+# ── Segredos e ambiente ──────────────────────────────────────
+.env
+.env.local
+.env.*.local
+.env.production
+.env.staging
+*.env
+
+# ── Python / Backend ─────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.so
+
+# Virtualenvs
+.venv/
+venv/
+env/
+ENV/
+.virtualenv/
+
+# Pytest / coverage
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Distribuição
+dist/
+build/
+*.egg-info/
+*.egg
+
+# ── Node / Frontend ──────────────────────────────────────────
+node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/build/
+
+# Logs npm/yarn/pnpm
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ── IDEs e editores ──────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*.DS_Store
+Thumbs.db
+.cursorrules
+
+# ── Arquivos gerados ─────────────────────────────────────────
+*.pdf
+*.log
+logs/
+
+# ── Render / Deploy ──────────────────────────────────────────
+.render/
