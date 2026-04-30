@@ -2,24 +2,63 @@ services:
   - type: web
     name: 100radar-backend
     runtime: python
+    rootDir: backend
     buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    startCommand: alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers --access-log
+    healthCheckPath: /health
+    autoDeploy: true
     envVars:
-      - key: SUPABASE_URL
+      - key: DATABASE_URL
         sync: false
-      - key: SUPABASE_SERVICE_ROLE_KEY
+
+      - key: DATABASE_URL_DIRECT
         sync: false
-      - key: SUPABASE_ANON_KEY
+
+      - key: API_KEY_ADMIN
         sync: false
-      - key: SUPABASE_JWT_SECRET
-        sync: false
-      - key: MP_ACCESS_TOKEN
-        sync: false
-      - key: MP_WEBHOOK_SECRET
-        sync: false
+
       - key: APP_ENV
         value: production
+
+      - key: LOG_LEVEL
+        value: INFO
+
+      - key: MP_PUBLIC_KEY
+        sync: false
+
+      - key: MP_ACCESS_TOKEN
+        sync: false
+
+      - key: MP_WEBHOOK_SECRET
+        sync: false
+
+      - key: MP_API_BASE_URL
+        value: https://api.mercadopago.com
+
+      - key: MP_WEBHOOK_ENABLED
+        value: "true"
+
       - key: CORS_ALLOW_ORIGINS
-        value: https://100radar-frontend.onrender.com
-      - key: PRICE_BRL_CENTAVOS
-        value: "500"
+        value: '["https://100radar-frontend.onrender.com","https://100radar.com.br","https://www.100radar.com.br","https://app.100radar.com.br"]'
+
+  - type: web
+    name: 100radar-frontend
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    autoDeploy: true
+    envVars:
+      - key: VITE_API_BASE_URL
+        value: https://100radar-backend.onrender.com
+
+      - key: VITE_PIX_CREATE_PATH
+        value: /v1/pagamento/mercadopago/pix
+
+      - key: VITE_PIX_STATUS_PATH
+        value: /v1/pagamento/mercadopago/status
+
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
