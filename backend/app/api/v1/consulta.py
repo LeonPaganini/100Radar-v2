@@ -5,6 +5,7 @@ from datetime import date
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
+from typing import Any
 
 from app.core.errors import raise_api_error
 from app.core.supabase import db as get_db
@@ -27,7 +28,14 @@ class PrecheckResponse(BaseModel):
     query_id: str
     status: str
     found: bool
+    can_unlock: bool
+    result_code: str
     amount_brl: float
+    source_mode: str = "database_pipeline"
+    radar: dict[str, Any] | None = None
+    faixa: dict[str, Any] | None = None
+    evidencia: dict[str, Any] | None = None
+    dataset_source: str | None = None
 
 
 @router.post("/precheck", response_model=PrecheckResponse)
@@ -35,37 +43,47 @@ async def precheck(payload: PrecheckRequest) -> PrecheckResponse:
     db = get_db()
     query_id = str(uuid.uuid4())
     site_id: str | None = None
+    lane_id: str | None = None
     found = False
     status_na_data = "INDETERMINADO"
+    lane_data: dict[str, Any] | None = None
+    site_data: dict[str, Any] | None = None
+    evidence: dict[str, Any] | None = None
 
     uf = payload.uf.upper().strip()
 
-    # Busca por Inmetro
+    # Busca por Inmetro/Série nas faixas
     if payload.numero_inmetro:
-        res = (
-            db.table("radar_sites")
-            .select("id")
-            .eq("uf", uf)
-            .eq("numero_inmetro", payload.numero_inmetro.strip())
+        needle = payload.numero_inmetro.strip()
+        lane = (
+            db.table("radar_lanes")
+            .select("id,site_id,numero_faixa,numero_inmetro,numero_serie,sentido,velocidade_nominal,radar_sites!inner(id,uf,municipio,local_text,tipo_medidor,source_url)")
+            .eq("numero_inmetro_normalized", needle)
+            .eq("radar_sites.uf", uf)
             .limit(1)
             .execute()
         )
-        if res.data:
-            site_id = res.data[0]["id"]
+        if lane.data:
+            lane_data = lane.data[0]
+            lane_id = lane_data.get("id")
+            site_id = lane_data.get("site_id")
+            site_data = lane_data.get("radar_sites")
             found = True
-
-    # Busca por Série
     elif payload.numero_serie:
-        res = (
-            db.table("radar_sites")
-            .select("id")
-            .eq("uf", uf)
-            .eq("numero_serie", payload.numero_serie.strip())
+        needle = payload.numero_serie.strip().upper()
+        lane = (
+            db.table("radar_lanes")
+            .select("id,site_id,numero_faixa,numero_inmetro,numero_serie,sentido,velocidade_nominal,radar_sites!inner(id,uf,municipio,local_text,tipo_medidor,source_url)")
+            .eq("numero_serie_normalized", needle)
+            .eq("radar_sites.uf", uf)
             .limit(1)
             .execute()
         )
-        if res.data:
-            site_id = res.data[0]["id"]
+        if lane.data:
+            lane_data = lane.data[0]
+            lane_id = lane_data.get("id")
+            site_id = lane_data.get("site_id")
+            site_data = lane_data.get("radar_sites")
             found = True
 
     # Busca por local/município (modo local)
@@ -85,7 +103,7 @@ async def precheck(payload: PrecheckRequest) -> PrecheckResponse:
         data_str = payload.data_infracao.isoformat()
         ver = (
             db.table("site_verifications")
-            .select("status")
+            .select("status,valid_from,valid_until,source_doc")
             .eq("site_id", site_id)
             .lte("valid_from", data_str)
             .or_(f"valid_until.is.null,valid_until.gte.{data_str}")
@@ -94,7 +112,9 @@ async def precheck(payload: PrecheckRequest) -> PrecheckResponse:
             .execute()
         )
         if ver.data:
-            status_na_data = ver.data[0]["status"]
+            selected = ver.data[0]
+            status_na_data = selected["status"]
+            evidence = {"data_laudo_usada": selected.get("valid_from"), "data_validade_usada": selected.get("valid_until"), "resultado_laudo": selected.get("source_doc")}
         else:
             latest = (
                 db.table("site_verifications")
@@ -121,16 +141,24 @@ async def precheck(payload: PrecheckRequest) -> PrecheckResponse:
         "numero_serie": payload.numero_serie,
         "data_infracao": payload.data_infracao.isoformat(),
         "site_id": site_id,
+        "lane_id": lane_id,
         "status_na_data": status_na_data,
         "identifier_type": payload.identifier_type,
         "amount_brl_centavos": settings.price_brl_centavos,
+        "result_code": "found" if found else "not_found",
     }).execute()
 
     return PrecheckResponse(
         query_id=query_id,
         status=status_na_data,
         found=found,
+        can_unlock=found and status_na_data == "VALIDO",
+        result_code="found" if found else "not_found",
         amount_brl=settings.price_brl_centavos / 100,
+        radar={"uf": site_data.get("uf"), "municipio": site_data.get("municipio"), "local": site_data.get("local_text"), "tipo_medidor": site_data.get("tipo_medidor")} if site_data else None,
+        faixa={"numero_faixa": lane_data.get("numero_faixa"), "numero_inmetro": lane_data.get("numero_inmetro"), "numero_serie": lane_data.get("numero_serie"), "sentido": lane_data.get("sentido"), "velocidade_nominal": lane_data.get("velocidade_nominal")} if lane_data else None,
+        evidencia=evidence,
+        dataset_source=site_data.get("source_url") if site_data else None,
     )
 
 
