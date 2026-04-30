@@ -38,6 +38,13 @@ class PrecheckResponse(BaseModel):
     dataset_source: str | None = None
 
 
+def _parse_query_uuid_or_422(query_id: str) -> str:
+    try:
+        return str(uuid.UUID(query_id))
+    except (ValueError, AttributeError):
+        raise_api_error(422, "invalid_query_id", "query_id inválido")
+
+
 @router.post("/precheck", response_model=PrecheckResponse)
 async def precheck(payload: PrecheckRequest) -> PrecheckResponse:
     db = get_db()
@@ -164,8 +171,9 @@ async def precheck(payload: PrecheckRequest) -> PrecheckResponse:
 
 @router.get("/{query_id}")
 async def get_query(query_id: str) -> dict:
+    query_uuid = _parse_query_uuid_or_422(query_id)
     db = get_db()
-    res = db.table("queries").select("*").eq("id", query_id).limit(1).execute()
+    res = db.table("queries").select("*").eq("id", query_uuid).limit(1).execute()
     if not res.data:
         raise_api_error(404, "query_not_found", "Consulta não encontrada")
     return res.data[0]
@@ -174,8 +182,9 @@ async def get_query(query_id: str) -> dict:
 @router.get("/{query_id}/pdf")
 async def get_pdf(query_id: str) -> StreamingResponse:
     import io
+    query_uuid = _parse_query_uuid_or_422(query_id)
     db = get_db()
-    res = db.table("queries").select("*").eq("id", query_id).limit(1).execute()
+    res = db.table("queries").select("*").eq("id", query_uuid).limit(1).execute()
     if not res.data:
         raise_api_error(404, "query_not_found", "Consulta não encontrada")
     query = res.data[0]

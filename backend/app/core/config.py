@@ -1,9 +1,48 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Iterable
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def parse_cors_origins(value: str | Iterable[str] | None) -> list[str]:
+    raw_items: list[str] = []
+
+    if value is None:
+        return []
+
+    if isinstance(value, str):
+        raw = value.strip()
+        if not raw:
+            return []
+        if raw.startswith("["):
+            try:
+                parsed = json.loads(raw)
+            except json.JSONDecodeError:
+                parsed = None
+            if isinstance(parsed, list):
+                raw_items = [str(item) for item in parsed]
+            else:
+                raw_items = raw.split(",")
+        else:
+            raw_items = raw.split(",")
+    else:
+        raw_items = [str(item) for item in value]
+
+    sanitized: list[str] = []
+    seen: set[str] = set()
+    for origin in raw_items:
+        clean = origin.strip().rstrip("/")
+        if not clean:
+            continue
+        if clean == "*":
+            raise ValueError("CORS wildcard '*' is not allowed")
+        if clean not in seen:
+            seen.add(clean)
+            sanitized.append(clean)
+    return sanitized
 
 
 class Settings(BaseSettings):
@@ -29,44 +68,15 @@ class Settings(BaseSettings):
         default='["https://one00radar-v2-mt38.onrender.com","http://localhost:5173","http://localhost:3000"]',
         validation_alias="CORS_ALLOW_ORIGINS",
     )
-    cors_allow_origin_regex: str = (
-        r"^https://one00radar-v2-[a-zA-Z0-9-]+\.onrender\.com$|^http://localhost(:[0-9]+)?$"
+    cors_allow_origin_regex: str | None = Field(
+        default=r"^https://one00radar-v2-[a-zA-Z0-9-]+\.onrender\.com$|^http://localhost(:[0-9]+)?$",
+        validation_alias="CORS_ALLOW_ORIGIN_REGEX",
     )
     gov_dataset_url_template: str = "https://servicos.rbmlq.gov.br/dados-abertos/{UF}/medidores.json"
 
     @property
     def cors_allow_origins(self) -> list[str]:
-        defaults = [
-            "https://one00radar-v2-mt38.onrender.com",
-            "http://localhost:5173",
-            "http://localhost:3000",
-        ]
-
-        raw = (self.cors_allow_origins_raw or "").strip()
-        parsed: list[str] = []
-
-        if raw:
-            if raw.startswith("["):
-                try:
-                    candidate = json.loads(raw)
-                except json.JSONDecodeError:
-                    candidate = []
-                if isinstance(candidate, list):
-                    parsed = [str(item) for item in candidate]
-            else:
-                parsed = raw.split(",")
-
-        sanitized: list[str] = []
-        seen: set[str] = set()
-        for origin in [*parsed, *defaults]:
-            clean = str(origin).strip().rstrip("/")
-            if not clean or clean == "*":
-                continue
-            if clean not in seen:
-                seen.add(clean)
-                sanitized.append(clean)
-
-        return sanitized
+        return parse_cors_origins(self.cors_allow_origins_raw)
 
 
 settings = Settings()  # type: ignore[call-arg]
