@@ -91,7 +91,7 @@ export default function Pagamento() {
           {/* Resultado rápido (situação) */}
           {q && (
             <div className="rounded-lg bg-muted/50 p-4 text-sm text-center">
-              Situação preliminar: <strong>{String(q.status_na_data ?? "INDETERMINADO")}</strong>
+              Situação preliminar: <strong>{String(q.status_na_data ?? q.status ?? "INDETERMINADO")}</strong>
               <br /><span className="text-muted-foreground">Pague para ver o relatório completo</span>
             </div>
           )}

@@ -63,7 +63,7 @@ export interface PrecheckPayload {
 
 export interface PrecheckResponse {
   query_id: string;
-  status: "REGULAR" | "VENCIDO" | "INDETERMINADO";
+  status: "REGULAR" | "VALIDO" | "VENCIDO" | "INDETERMINADO";
   found: boolean;
   amount_brl: number;
 }
