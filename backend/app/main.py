@@ -23,7 +23,8 @@ def create_app() -> FastAPI:
 
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.cors_origins_list,
+        allow_origins=settings.cors_allow_origins,
+        allow_origin_regex=settings.cors_allow_origin_regex,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -56,7 +57,12 @@ def create_app() -> FastAPI:
             content={"error": {"code": "internal_error", "message": "Erro interno. Tente novamente."}},
         )
 
-    logger.info("app startup env=%s cors=%s", settings.app_env, settings.cors_allow_origins)
+    logger.info(
+        "app startup env=%s cors_origins=%s cors_origin_regex=%s",
+        settings.app_env,
+        settings.cors_allow_origins,
+        settings.cors_allow_origin_regex,
+    )
     return app
 
 
