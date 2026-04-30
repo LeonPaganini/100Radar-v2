@@ -64,7 +64,7 @@ async def precheck(payload: PrecheckRequest) -> PrecheckResponse:
         needle = payload.numero_inmetro.strip()
         lane = (
             db.table("radar_lanes")
-            .select("id,site_id,numero_faixa,numero_inmetro,numero_serie,sentido,velocidade_nominal,radar_sites!inner(id,uf,municipio,local_text,tipo_medidor,source_url)")
+            .select("id,site_id,numero_faixa,numero_inmetro,numero_serie,sentido,velocidade_nominal,radar_sites!inner(id,uf,municipio,local_text,source_url)")
             .eq("numero_inmetro_normalized", needle)
             .eq("radar_sites.uf", uf)
             .limit(1)
@@ -80,7 +80,7 @@ async def precheck(payload: PrecheckRequest) -> PrecheckResponse:
         needle = payload.numero_serie.strip().upper()
         lane = (
             db.table("radar_lanes")
-            .select("id,site_id,numero_faixa,numero_inmetro,numero_serie,sentido,velocidade_nominal,radar_sites!inner(id,uf,municipio,local_text,tipo_medidor,source_url)")
+            .select("id,site_id,numero_faixa,numero_inmetro,numero_serie,sentido,velocidade_nominal,radar_sites!inner(id,uf,municipio,local_text,source_url)")
             .eq("numero_serie_normalized", needle)
             .eq("radar_sites.uf", uf)
             .limit(1)
@@ -162,7 +162,7 @@ async def precheck(payload: PrecheckRequest) -> PrecheckResponse:
         can_unlock=found and status_na_data == "VALIDO",
         result_code="found" if found else "not_found",
         amount_brl=settings.price_brl_centavos / 100,
-        radar={"uf": site_data.get("uf"), "municipio": site_data.get("municipio"), "local": site_data.get("local_text"), "tipo_medidor": site_data.get("tipo_medidor")} if site_data else None,
+        radar={"uf": site_data.get("uf"), "municipio": site_data.get("municipio"), "local": site_data.get("local_text"), "tipo_medidor": site_data.get("tipo_medidor") if isinstance(site_data, dict) else None} if site_data else None,
         faixa={"numero_faixa": lane_data.get("numero_faixa"), "numero_inmetro": lane_data.get("numero_inmetro"), "numero_serie": lane_data.get("numero_serie"), "sentido": lane_data.get("sentido"), "velocidade_nominal": lane_data.get("velocidade_nominal")} if lane_data else None,
         evidencia=evidence,
         dataset_source=site_data.get("source_url") if site_data else None,
