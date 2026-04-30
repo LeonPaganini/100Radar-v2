@@ -2,6 +2,7 @@ services:
   - type: web
     name: 100radar-backend
     runtime: python
+    pythonVersion: 3.12.8
     plan: free
     rootDir: backend
     buildCommand: pip install -r requirements.txt
@@ -40,10 +41,10 @@ services:
         value: "true"
 
       - key: CORS_ALLOW_ORIGINS
-        value: '["https://one00radar-v2-mt38.onrender.com","http://localhost:5173"]'
+        value: '["https://one00radar-v2-mt38.onrender.com","http://localhost:5173","http://localhost:3000"]'
 
       - key: CORS_ALLOW_ORIGIN_REGEX
-        value: 'https://one00radar-v2-[a-zA-Z0-9-]+\\.onrender\\.com|http://localhost(:\\d+)?'
+        value: '^https://one00radar-v2-[a-zA-Z0-9-]+\\.onrender\\.com$|^http://localhost(:[0-9]+)?$'
 
   - type: web
     name: 100radar-frontend

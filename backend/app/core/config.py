@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 import json
-from typing import Any
 
-from pydantic import field_validator
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -26,37 +25,48 @@ class Settings(BaseSettings):
     # App
     app_env: str = "local"
     price_brl_centavos: int = 500
-    cors_allow_origins: list[str] = [
-        "https://one00radar-v2-mt38.onrender.com",
-        "https://one00radar-v2-be.onrender.com",
-        "http://localhost:5173",
-        "http://localhost:3000",
-    ]
-    cors_allow_origin_regex: str = r"https://one00radar-v2-[a-zA-Z0-9-]+\.onrender\.com|http://localhost(:\\d+)?"
+    cors_allow_origins_raw: str = Field(
+        default='["https://one00radar-v2-mt38.onrender.com","http://localhost:5173","http://localhost:3000"]',
+        validation_alias="CORS_ALLOW_ORIGINS",
+    )
+    cors_allow_origin_regex: str = (
+        r"^https://one00radar-v2-[a-zA-Z0-9-]+\.onrender\.com$|^http://localhost(:[0-9]+)?$"
+    )
     gov_dataset_url_template: str = "https://servicos.rbmlq.gov.br/dados-abertos/{UF}/medidores.json"
 
-    @field_validator("cors_allow_origins", mode="before")
-    @classmethod
-    def parse_cors_allow_origins(cls, value: Any) -> list[str]:
-        if isinstance(value, list):
-            return [str(origin).strip() for origin in value if str(origin).strip()]
+    @property
+    def cors_allow_origins(self) -> list[str]:
+        defaults = [
+            "https://one00radar-v2-mt38.onrender.com",
+            "http://localhost:5173",
+            "http://localhost:3000",
+        ]
 
-        if isinstance(value, str):
-            raw = value.strip()
-            if not raw:
-                return []
+        raw = (self.cors_allow_origins_raw or "").strip()
+        parsed: list[str] = []
 
+        if raw:
             if raw.startswith("["):
-                parsed = json.loads(raw)
-                if not isinstance(parsed, list):
-                    msg = "CORS_ALLOW_ORIGINS JSON must be an array"
-                    raise ValueError(msg)
-                return [str(origin).strip() for origin in parsed if str(origin).strip()]
+                try:
+                    candidate = json.loads(raw)
+                except json.JSONDecodeError:
+                    candidate = []
+                if isinstance(candidate, list):
+                    parsed = [str(item) for item in candidate]
+            else:
+                parsed = raw.split(",")
 
-            return [origin.strip() for origin in raw.split(",") if origin.strip()]
+        sanitized: list[str] = []
+        seen: set[str] = set()
+        for origin in [*parsed, *defaults]:
+            clean = str(origin).strip().rstrip("/")
+            if not clean or clean == "*":
+                continue
+            if clean not in seen:
+                seen.add(clean)
+                sanitized.append(clean)
 
-        msg = "CORS_ALLOW_ORIGINS must be list or string"
-        raise ValueError(msg)
+        return sanitized
 
 
 settings = Settings()  # type: ignore[call-arg]
