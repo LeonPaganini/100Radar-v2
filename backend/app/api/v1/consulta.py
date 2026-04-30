@@ -95,6 +95,23 @@ async def precheck(payload: PrecheckRequest) -> PrecheckResponse:
         )
         if ver.data:
             status_na_data = ver.data[0]["status"]
+        else:
+            latest = (
+                db.table("site_verifications")
+                .select("status,valid_until")
+                .eq("site_id", site_id)
+                .lte("valid_from", data_str)
+                .order("valid_from", desc=True)
+                .limit(1)
+                .execute()
+            )
+            if latest.data:
+                latest_verification = latest.data[0]
+                valid_until = latest_verification.get("valid_until")
+                if valid_until and valid_until < data_str:
+                    status_na_data = "VENCIDO"
+                else:
+                    status_na_data = latest_verification.get("status") or status_na_data
 
     # Persiste consulta
     db.table("queries").insert({
